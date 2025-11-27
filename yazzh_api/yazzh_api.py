@@ -155,6 +155,8 @@ def get_linked_schools(user_address: str):
     # ВЫОВОДИМАЯ ИНФОРМАЦИЯ: полная инфа в json
     return data
 
+""" 
+в kindergarten.py
 # Получить детские сады по фильтрам (район, возраст ребенка в годах, возраст ребенка в месяцах)
 # входные параметры, например: district="Приморский", age_year=3
 def get_dou(district, age_year: int = 0, age_month: int = 0):
@@ -174,6 +176,7 @@ def get_dou(district, age_year: int = 0, age_month: int = 0):
     data = resp.json()
     # ВЫОВОДИМАЯ ИНФОРМАЦИЯ: полная инфа в json
     return data
+"""
 
 #----------------пенсия---------------
 #список всех категорий кружков для пенсионеров
@@ -311,9 +314,6 @@ if __name__ == "__main__":
     data = get_linked_schools("Комендантский проспект 61")
     #print(data)
 
-    # Все гос. сады в Приморском районе для ребёнка 3 лет
-    dou = get_dou(district="Приморский", age_year=3)
-    #print(dou)
 
     #------пенсия--
     #print(pensioner_servis_category())
