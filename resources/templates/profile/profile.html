@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Profile</title>
+    <link rel="stylesheet" href="/resources/static/css/profile.css"/>
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>Личный кабинет</h1>
+            <button class="logout-btn" id="logoutBtn">Выйти</button>
+        </div>
+
+        <div class="profile-content">
+            <!-- Секция изменения данных профиля -->
+            <div class="profile-section">
+                <h2>Личные данные</h2>
+                <form class="profile-form" id="profileForm">
+                    <div class="form-group">
+                        <label for="username">Логин</label>
+                        <input type="text" id="username" name="username" placeholder="Логин" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">Город</label>
+                        <input type="text" id="city" name="city" placeholder="Город">
+                    </div>
+                    <div class="form-group">
+                        <label for="district">Район</label>
+                        <input type="text" id="district" name="district" placeholder="Район">
+                    </div>
+                    <div class="form-group">
+                        <label for="age">Возраст</label>
+                        <input type="number" id="age" name="age" placeholder="Возраст" min="1" max="120">
+                    </div>
+                    <button type="submit" class="submit-button">Сохранить изменения</button>
+                </form>
+            </div>
+
+            <!-- Секция изменения пароля -->
+            <div class="profile-section">
+                <h2>Изменить пароль</h2>
+                <form class="profile-form" id="passwordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Текущий пароль</label>
+                        <input type="password" id="currentPassword" name="currentPassword" placeholder="Текущий пароль" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">Новый пароль</label>
+                        <input type="password" id="newPassword" name="newPassword" placeholder="Новый пароль" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Подтвердите новый пароль</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Подтвердите пароль" required>
+                    </div>
+                    <button type="submit" class="submit-button">Изменить пароль</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/resources/static/js/profile.js"></script>
+</body>
+</html>
