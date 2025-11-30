@@ -9,7 +9,7 @@ dependencies = [
     "openai>=1.108.0",
     "jinja2>=3.1.0",
     "qdrant_client>=1.15.1",
-#    "sentence_transformers>=5.1.0",
+    "sentence_transformers>=5.1.0",
     "fastapi>=0.118.0",
     "uvicorn>=0.37.0",
     "python-multipart>=0.0.20",
@@ -17,7 +17,10 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "openpyxl>=3.1.5",
     "scrapy>=2.13.3",
-    "scrapy-playwright>=0.0.44"
+    "scrapy-playwright>=0.0.44",
+    "loguru>=0.7.2",
+    "bm25s>=0.2.0",
+    "pymorphy3>=2.0.0"
 ]
 
 [tool.ruff]
