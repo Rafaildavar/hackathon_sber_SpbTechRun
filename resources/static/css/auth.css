@@ -4,30 +4,34 @@
 }
 /* Переменные CSS */
 :root {
-	--bg: #0f1724;
-	--card: #0b1220;
-	--accent: #2dd4bf;
-    --accent-red: #fb4444;
-	--muted:#042027;
-	--text: #e6eef6;
+	/* Палитра "Белые ночи" */
+	--primary: #1D4F82; /* основной синий */
+	--bg: #F4F6FB;      /* фон страницы */
+	--card: #FFFFFF;    /* поверхности, карточки, поля */
+	--accent: #1D4F82;  /* primary (используется как accent в коде) */
+	--accent-red: #C03E2F; /* тёплый архитектурный акцент */
+	--accent2: #2E7D6F;  /* поддерживающий зелёно-бирюзовый */
+	--muted: #6B7280;    /* текст вторичный / подсказки */
+	--text: #111827;     /* основной текст */
+	--border: #D1D5DB;   /* границы и разделители */
 	--radius: 12px;
 	--gap: 14px;
 }
 /* Общие настройки формы */
 html, body {
-	height: 100%;
-	margin: 0;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-	background: rgb(26, 29, 34);
-	color: var(--text);
+    height: 100%;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--bg);
+    color: var(--text);
 }
 
 body {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
 }
 /* Настройка формы регистрации */
 .auth-form {
@@ -35,13 +39,13 @@ body {
 	max-width: 420px;
 	display: flex;
 	flex-direction: column;
-    align-items: center;
+	align-items: center;
 	gap: var(--gap);
 	padding: 28px;
-	background: linear-gradient(135deg, rgba(11, 18, 32, 0.95), rgba(15, 23, 36, 0.95));
-	border: 1px solid rgba(255,255,255,0.04);
+	background: var(--card);
+	border: 1px solid var(--border);
 	border-radius: var(--radius);
-	box-shadow: 0 6px 30px rgba(2,6,23,0.6);
+	box-shadow: 0 6px 18px rgba(17,24,39,0.06);
 }
 /* Настройки элементов формы регистрации */
 .auth-form input[type="text"],
@@ -52,8 +56,8 @@ body {
     text-align: center;
 	width: 100%;
 	padding: 12px 14px;
-	background: rgb(0, 102, 255);
-	border: 1px solid rgba(255,255,255,0.04);
+	background: var(--card);
+	border: 1px solid var(--border);
 	color: var(--text);
 	border-radius: 12px;
 	font-size: 16px;
@@ -62,7 +66,7 @@ body {
 
 .auth-form input[type="text"]:hover,
 .auth-form .password:hover {
-    border-color: rgb(0, 255, 221);
+	border-color: var(--accent2);
 }
 
 .auth-form input::placeholder {
@@ -70,8 +74,8 @@ body {
 }
 
 .auth-form input:focus {
-	border-color: rgba(45,212,191,0.85);
-	box-shadow: 0 0 0 4px rgba(45,212,191,0.06);
+	border-color: var(--accent2);
+	box-shadow: 0 0 0 4px rgba(46,125,111,0.06);
 }
 /* Кнопка входа */
 .submit-button {
@@ -80,8 +84,8 @@ body {
 	border: none;
 	cursor: pointer;
 	padding: 12px 14px;
-	background: linear-gradient(90deg, var(--accent), #06b6d4);
-	color: #042027;
+	background: linear-gradient(90deg, var(--accent), var(--accent2));
+	color: var(--card);
 	font-weight: 600;
 	border-radius: 10px;
 	font-size: 16px;
@@ -89,7 +93,7 @@ body {
 }
 
 .submit-button:hover {
-    background: linear-gradient(90deg, var(--accent-red), #ff0000);
+	background: linear-gradient(90deg, var(--accent-red), var(--accent-red));
 }
 
 .submit-button:active {

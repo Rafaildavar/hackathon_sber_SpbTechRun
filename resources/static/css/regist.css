@@ -3,30 +3,34 @@
 }
 /* Переменные CSS */
 :root {
-	--bg: #0f1724;
-	--card: #0b1220;
-	--accent: #2dd4bf;
-	--accent-red: #fb4444;
-	--muted: #042027;
-	--text: #e6eef6;
+	/* Палитра Белые ночи */
+	--primary: #1D4F82;
+	--bg: #F4F6FB;
+	--card: #FFFFFF;
+	--accent: #1D4F82;
+	--accent-red: #C03E2F;
+	--accent2: #2E7D6F;
+	--muted: #6B7280;
+	--text: #111827;
+	--border: #D1D5DB;
 	--radius: 12px;
 	--gap: 14px;
 }
 /* Общие настройки */
 html, body {
-	height: 100%;
-	margin: 0;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-	background: rgb(26, 29, 34);
-	color: var(--text);
+    height: 100%;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: var(--bg);
+    color: var(--text);
 }
 
 body {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
 }
 
 .registration-container {
@@ -39,9 +43,9 @@ body {
 	gap: 0;
 	border-radius: var(--radius);
 	overflow: hidden;
-	box-shadow: 0 10px 40px rgba(2, 6, 23, 0.8);
-	background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-	border: 1px solid rgba(255,255,255,0.04);
+	box-shadow: 0 10px 30px rgba(17,24,39,0.06);
+	background: var(--card);
+	border: 1px solid var(--border);
 }
 
 /* Левая часть (контент) */
@@ -50,9 +54,10 @@ body {
 	align-items: center;
 	justify-content: center;
 	padding: 40px;
-	background: linear-gradient(135deg, rgba(11, 18, 32, 0.95), rgba(15, 23, 36, 0.95));
+	background: var(--card);
 	position: relative;
 	overflow: hidden;
+	border-right: 1px solid var(--border);
 }
 
 .step-content {
@@ -97,14 +102,14 @@ body {
 
 .regist-form input {
 	padding: 12px 14px;
-	background: rgb(0, 102, 255);
-	border: 1px solid rgba(255,255,255,0.04);
+	background: var(--card);
+	border: 1px solid var(--border);
 	color: var(--text);
 	border-radius: 8px;
 	font-size: 14px;
 	outline: none;
 	transition: border-color 0.3s;
-    text-align: center;
+	text-align: left;
 	width: 100%;
 }
 
@@ -113,12 +118,12 @@ body {
 }
 
 .regist-form input:focus {
-	border-color: rgba(45,212,191,0.85);
-	box-shadow: 0 0 0 4px rgba(45,212,191,0.06);
+	border-color: var(--accent2);
+	box-shadow: 0 0 0 4px rgba(46,125,111,0.06);
 }
 
 .regist-form input:hover {
-    border-color: rgb(0, 255, 221);
+	border-color: var(--accent2);
 }
 
 .submit-button {
@@ -127,8 +132,8 @@ body {
 	border: none;
 	cursor: pointer;
 	padding: 12px 14px;
-	background: linear-gradient(90deg, var(--accent), #06b6d4);
-	color: #042027;
+	background: linear-gradient(90deg, var(--accent), var(--accent2));
+	color: var(--card);
 	font-weight: 600;
 	border-radius: 8px;
 	font-size: 16px;
@@ -141,7 +146,7 @@ body {
 }
 
 .submit-button:hover {
-	background: linear-gradient(90deg, var(--accent-red), #ff0000);
+	background: linear-gradient(90deg, var(--accent-red), var(--accent-red));
 }
 
 /* Правая часть (визуал) */
@@ -150,10 +155,10 @@ body {
 	align-items: center;
 	justify-content: center;
 	padding: 40px;
-	background: linear-gradient(135deg, rgba(45,212,191,0.1), rgba(6,182,212,0.1));
+	background: var(--card);
 	position: relative;
 	overflow: hidden;
-    width: 100%;
+	width: 100%;
 }
 
 .step-visual {
@@ -262,16 +267,16 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(45,212,191,0.05);
+	background: rgba(46,125,111,0.04);
 	border-radius: 50%;
-	border: 2px solid rgba(45,212,191,0.2);
+	border: 2px solid rgba(46,125,111,0.12);
 	animation: float 3s ease-in-out infinite;
 }
 
 .visual-image svg {
 	width: 100%;
 	height: 100%;
-	filter: drop-shadow(0 2px 4px rgba(45,212,191,0.2));
+	filter: drop-shadow(0 2px 4px rgba(46,125,111,0.12));
 	display: block;
 	margin: 0 auto;
 }
