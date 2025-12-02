@@ -266,7 +266,8 @@ if __name__ == "__main__":
 
     #print(get_iparent_recreations_categories())
 
+    # без параметров падает
     print(get_iparent_recreations_all(categoria="Театр", free=True))
 
-    # print(get_iparent_recreation_by_id(id=1))
+    #print(get_iparent_recreation_by_id(id=45429))
     ...
