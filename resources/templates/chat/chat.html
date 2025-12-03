@@ -5,8 +5,75 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Chat</title>
     <link rel="stylesheet" href="/resources/static/css/chat.css"/>
+    <style>
+        .top-navbar {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .nav-container {
+            max-width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .nav-item {
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .nav-item:hover {
+            background: var(--bg);
+            color: var(--primary);
+        }
+        .nav-logout {
+            color: var(--accent-red);
+        }
+        .nav-logout:hover {
+            background: rgba(255, 25, 0, 0.1);
+            color: var(--accent-red);
+        }
+        .app {
+            height: calc(100vh - 60px);
+        }
+    </style>
 </head>
 <body>
+    <nav class="top-navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">🏙️ Городской помощник</a>
+            <div class="nav-menu">
+                <a href="/profile" class="nav-item">Личный кабинет</a>
+                <button id="logoutBtn" class="nav-item nav-logout">Выйти</button>
+            </div>
+        </div>
+    </nav>
     <div class="app" role="application" aria-label="Chat">
         <aside class="sidebar" aria-label="Sidebar of chat">
             <div class="brand">
@@ -22,7 +89,6 @@
                 <div>
                     <div class="title" id="convTitle">New Chat</div>
                 </div>
-                <!-- Действия в шапке чата: удалить диалог -->
                 <div class="header-actions">
                     <button id="deleteBtn" class="delete-btn" title="Delete conversation" aria-label="Delete conversation">🗑️</button>
                 </div>
@@ -34,10 +100,8 @@
 
             <div class="input-area">
                 <textarea id="input" placeholder="Write a message... (Enter — send, Shift+Enter — new line)"></textarea>
-                <!-- Кнопка прикрепления файла (скрытый input) -->
                 <input type="file" id="fileInput" style="display:none" />
                 <button id="fileBtn" class="file-btn" title="Attach file" aria-label="Attach file">📎</button>
-                <!-- Кнопка голосового ввода (запись) -->
                 <button id="voiceBtn" class="voice-btn" title="Voice input" aria-label="Voice input">🎤</button>
                 <button id="send" class="send-btn" title="Send" aria-label="Send">✈️</button>
             </div>
@@ -45,5 +109,20 @@
     </div>
 
     <script src="/resources/static/js/chat.js"></script>
+    <script>
+        // Обработка выхода из аккаунта
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Вы уверены, что хотите выйти?')) {
+                fetch('/api/logout', { method: 'POST' })
+                    .then(() => {
+                        window.location.href = '/auth/login';
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        window.location.href = '/auth/login';
+                    });
+            }
+        });
+    </script>
 </body>
 </html>

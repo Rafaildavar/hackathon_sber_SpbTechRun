@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Городской помощник</title>
+    <link rel="stylesheet" href="/resources/static/css/auth.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --hero-bg-start: #1D4F82;
+            --hero-bg-end: #2E7D6F;
+            --text-light: #F4F6FB;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: block;
+            min-height: 100vh;
+        }
+        .navbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-icon { font-size: 1.5rem; }
+        .nav-actions { display: flex; gap: 16px; }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .hero-section {
+            background: linear-gradient(135deg, var(--hero-bg-start), var(--hero-bg-end));
+            color: var(--text-light);
+            padding: 140px 24px 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-bottom-left-radius: 40px;
+            border-bottom-right-radius: 40px;
+            box-shadow: 0 10px 30px rgba(29, 79, 130, 0.15);
+        }
+        .hero-section::before, .hero-section::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            z-index: 0;
+        }
+        .hero-section::before {
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            top: -100px;
+            left: -100px;
+        }
+        .hero-section::after {
+            width: 400px;
+            height: 400px;
+            background: rgba(192, 62, 47, 0.15);
+            bottom: -150px;
+            right: -100px;
+        }
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 48px;
+            line-height: 1.6;
+            font-weight: 400;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+        .btn-hero {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-hero-primary {
+            background: #fff;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .btn-hero-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            background: #f8f9fa;
+        }
+        .btn-hero-secondary {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .btn-hero-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+        .features-section {
+            max-width: 1200px;
+            margin: -40px auto 60px;
+            padding: 0 24px;
+            position: relative;
+            z-index: 2;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--card);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+            border-color: rgba(45, 212, 191, 0.3);
+        }
+        .feature-icon-wrapper {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 20px;
+        }
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 12px;
+        }
+        .feature-desc {
+            color: var(--muted);
+            line-height: 1.6;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+        @media (max-width: 768px) {
+            .navbar { padding: 20px; }
+            .hero-title { font-size: 2.5rem; }
+            .hero-section { padding-top: 120px; }
+            .features-section { margin-top: 40px; }
+            .hero-buttons { flex-direction: column; width: 100%; }
+            .btn-hero { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <span class="logo-icon">🏙️</span>
+            Городской помощник
+        </a>
+        <div class="nav-actions">
+            <a href="/auth/login" class="nav-link">Войти</a>
+            <a href="/auth/register" class="btn-hero btn-hero-primary" style="padding: 8px 20px; font-size: 0.9rem;">Регистрация</a>
+        </div>
+    </nav>
+    <header class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Ваш умный гид по<br>Санкт-Петербургу</h1>
+            <p class="hero-subtitle">
+                Интеллектуальный помощник, который знает всё о городских услугах, событиях и жизни в Северной столице.
+            </p>
+            <div class="hero-buttons">
+                <a href="/auth/register" class="btn-hero btn-hero-primary">Регистрация</a>
+                <a href="/auth/login" class="btn-hero btn-hero-secondary">Войти</a>
+            </div>
+        </div>
+    </header>
+    <section class="features-section">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">🏛️</div>
+                <h3 class="feature-title">Госуслуги без стресса</h3>
+                <p class="feature-desc">Мгновенный поиск информации о документах, справках и процедурах оформления.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">🎭</div>
+                <h3 class="feature-title">Культурная жизнь</h3>
+                <p class="feature-desc">Афиша театров, выставок и уникальных мест, которые стоит посетить.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">🏫</div>
+                <h3 class="feature-title">Образование и дети</h3>
+                <p class="feature-desc">Всё о школах, детских садах и кружках в вашем районе.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">🐕</div>
+                <h3 class="feature-title">Забота о питомцах</h3>
+                <p class="feature-desc">Ветклиники, площадки для выгула и советы для владельцев животных.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">👵</div>
+                <h3 class="feature-title">Социальная поддержка</h3>
+                <p class="feature-desc">Понятная информация о льготах, выплатах и поддержке пенсионеров.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper">🤖</div>
+                <h3 class="feature-title">Умный диалог</h3>
+                <p class="feature-desc">Задавайте вопросы на естественном языке и получайте точные ответы.</p>
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+        <p>&copy; 2025 Городской помощник. Сделано с любовью к Санкт-Петербургу.</p>
+    </footer>
+</body>
+</html>
