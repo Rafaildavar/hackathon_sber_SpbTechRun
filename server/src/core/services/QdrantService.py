@@ -306,25 +306,29 @@ class QdrantService:
 async def main():
     qdrant_service = QdrantService()
 
-    chunks_dir = "../../data/chunks"
+    chunks_dir = "./core/data/chunks"
+
+    log.info("Очистка существующих чанков из Qdrant...")
     qdrant_service.clear_all_chunks()
-    qdrant_service.add_vectorized_chunks(chunks_dir)
-    print("Чанки успешно добавлены в векторную БД")
+
+    log.info("Добавление чанков в Qdrant...")
+    docs = qdrant_service.add_vectorized_chunks(chunks_dir)
+    log.info(f"Чанки успешно добавлены в векторную БД: {len(docs)} документов")
 
     info = qdrant_service.get_collection_info()
-    print(info)
+    log.info(f"Информация о коллекции: {info}")
 
     if info.get("points_count", 0) > 0:
-        query = "Какие есть правила по посещению конференций?"
+        query = "Какая приоритетная группа для прохождения диспансеризации?"
 
         results = qdrant_service.search_similar(query)
         for i, result in enumerate(results, 1):
-            print(f"{i}. Score: {result['score']:.3f}, File: {result['filename']}")
-            print(f"Text: {result['text'][:100]}...")
-            print(f"Link: {result['link']}")
-            print(f"Title: {result['title']}")
+            log.info(f"{i}. Score: {result['score']:.3f}, File: {result['filename']}")
+            log.info(f"Text: {result['text'][:100]}...")
+            log.info(f"Link: {result['link']}")
+            log.info(f"Title: {result['title']}")
     else:
-        print("Коллекция пуста, иди чини БД")
+        log.warning("Коллекция пуста, проверьте директорию с чанками")
 
 if __name__ == "__main__":
     asyncio.run(main())

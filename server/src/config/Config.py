@@ -44,10 +44,25 @@ class RerankerConfig:
     top_samples: int
 
 @dataclass
+class BM25Config:
+    top_samples: int
+
+@dataclass
 class LLMConfig:
     url: str
     token: str
     model: str
+
+@dataclass
+class RagConfig:
+    endpoint_url: str
+
+@dataclass
+class TavilyConfig:
+    api_key: str
+    max_results: int
+    search_depth: str
+    include_raw_content: bool
 
 @dataclass
 class Config:
@@ -55,6 +70,9 @@ class Config:
     chunks: ChunksConfig
     qdrant: QdrantConfig
     reranker: RerankerConfig
+    bm25: BM25Config
+    rag: RagConfig
+    tavily: TavilyConfig
     logging: LoggingConfig
 
 class ConfigLoader:

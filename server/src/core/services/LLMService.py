@@ -1,6 +1,8 @@
 import json
 import time
 import asyncio
+from typing import Type, TypeVar
+from pydantic import BaseModel
 
 from openai import AsyncOpenAI
 
@@ -8,6 +10,8 @@ from config.Config import CONFIG
 from utils.logger import get_logger
 
 log = get_logger("LLMService")
+
+T = TypeVar('T', bound=BaseModel)
 
 class LLMService:
     def __init__(self):
@@ -58,6 +62,39 @@ class LLMService:
             pass
 
         return str(res.choices[0].message.content)
+
+    async def fetch_structured_completion(self, prompt: str, response_model: Type[T]) -> T:
+        self.request_counter += 1
+        request_id = self.request_counter
+        log.info(f"Запрос к llm со structured output ({request_id}): {prompt}")
+
+        counter = 0
+        while True:
+            try:
+                res = await self.__fetch_structured_completion(prompt, response_model)
+                log.info(f"Ответ от llm ({request_id}): {res.model_dump_json()}")
+                return res
+            except Exception as e:
+                counter += 1
+                if counter < 3:
+                    log.warning(f"Ошибка при запросе к llm: {str(e)}")
+                else:
+                    raise e
+
+    async def __fetch_structured_completion(self, prompt: str, response_model: Type[T]) -> T:
+        res = await self.openai.beta.chat.completions.parse(
+            messages=[{"role": "user", "content": prompt}],
+            model=CONFIG.llm.model,
+            temperature=0,
+            top_p=0.5,
+            response_format=response_model
+        )
+
+        if res.usage:
+            self.total_input_token += int(res.usage.prompt_tokens)
+            self.total_output_token += int(res.usage.completion_tokens)
+
+        return res.choices[0].message.parsed
 
 async def main():
     service = LLMService()
