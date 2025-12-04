@@ -3,8 +3,7 @@
 Запустите этот скрипт один раз для создания таблиц.
 """
 
-from app import app, db
+from database import Base, engine
 
-with app.app_context():
-    db.create_all()
-    print("База данных инициализирована успешно!")
+Base.metadata.create_all(bind=engine)
+print("База данных инициализирована успешно!")

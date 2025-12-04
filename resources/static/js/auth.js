@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     username: username,
                     password: password
@@ -29,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(({ status, data }) => {
                 if (status === 200) {
                     alert('Вход выполнен успешно!');
-                    window.location.href = '/profile';
+                    window.location.href = '/chat';
                 } else {
                     alert(data.error || 'Ошибка при входе');
                 }
