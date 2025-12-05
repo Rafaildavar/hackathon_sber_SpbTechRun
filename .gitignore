@@ -19,6 +19,12 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+# Файл для .gitignore
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 .Python
 build/
 develop-eggs/
@@ -178,3 +184,40 @@ cython_debug/
 data
 .idea
 server/src/config.yml
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Scrapy
+.scrapy/
+httpcache/
+
+# Не сохраняем скачанные HTML файлы и другие форматы кроме JSON
+*.html
+*.xml
+*.csv
+*.jl
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Qdrant
+qdrant_data
