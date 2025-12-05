@@ -293,7 +293,7 @@ def get_beautiful_places(area: str = None, categoria: str = None, district: str 
 
 if __name__ == "__main__":
     mfc_data = find_nearest_mfc("Комендантский проспект 61")
-    #print(mfc_data)
+    print(mfc_data)
 
     mfc_list = get_mfc_by_district("Приморский")
     #print(mfc_list)
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     #print(get_beautiful_places_area())
     #print(get_beautiful_categoria())
     #print(get_beautiful_places())
-    #print(get_beautiful_places(area="Районы города", district="Адмиралтейский", categoria="Архитектура"))
+    # print(get_beautiful_places(area="Районы города", district="Адмиралтейский", categoria="Архитектура"))
 
 
 

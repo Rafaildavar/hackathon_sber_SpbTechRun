@@ -1,4 +1,5 @@
 import asyncio
+import json
 import requests
 from typing import List, Dict
 from tavily import TavilyClient
@@ -10,6 +11,19 @@ from config.Config import CONFIG
 from utils.logger import get_logger
 
 log = get_logger("RetrievalAgent")
+
+# Маппинг имен функций на их реализации
+FUNCTION_MAP = {
+    "find_nearest_mfc": tools.find_nearest_mfc,
+    "get_mfc_by_district": tools.get_mfc_by_district,
+    "get_polyclinics_by_address": tools.get_polyclinics_by_address,
+    "get_schools_by_district": tools.get_schools_by_district,
+    "get_linked_schools": tools.get_linked_schools,
+    "get_dou": tools.get_dou,
+    "pensioner_service": tools.pensioner_service,
+    "afisha_all": tools.afisha_all,
+    "get_beautiful_places": tools.get_beautiful_places,
+}
 
 CITY_API_TOOLS = [
     {
@@ -154,8 +168,14 @@ class RetrievalAgent:
         self.rag_endpoint_url = CONFIG.rag.endpoint_url
         self.tavily_client = TavilyClient(api_key=CONFIG.tavily.api_key)
 
-    async def rag_search(self, state: RetrievalState) -> RetrievalState:
+    async def get_rag_data(self, state: RetrievalState) -> RetrievalState:
         message = state["message"]
+        requires_rag = state.get("requires_rag", False)
+
+        if not requires_rag:
+            log.info("RAG поиск не требуется")
+            return {"rag_context": None}
+
         log.info(f"Выполнение RAG поиска")
 
         try:
@@ -167,46 +187,85 @@ class RetrievalAgent:
             if response.status_code == 200:
                 answer = response.json().get("answer", "")
                 log.info(f"RAG ответ получен")
-                return {**state, "rag_context": answer}
+                log.info(f"RAG ответ: {answer}")
+                return {"rag_context": answer}
             else:
                 log.error(f"Ошибка RAG endpoint: {response.status_code}")
-                return {**state, "rag_context": None}
+                return {"rag_context": None}
         except Exception as e:
             log.error(f"Ошибка RAG поиска: {str(e)}")
-            return {**state, "rag_context": None}
+            return {"rag_context": None}
 
-    async def api_search(self, state: RetrievalState) -> RetrievalState:
+    async def get_api_data(self, state: RetrievalState) -> RetrievalState:
         message = state["message"]
         requires_api = state.get("requires_api", False)
 
         if not requires_api:
             log.info("API поиск не требуется")
-            return {**state, "api_data": None}
+            return {"api_data": None}
 
         log.info(f"Выполнение API поиска с function calling")
 
         try:
             prompt = f"Пользователь запросил: {message}\n\nИспользуй доступные функции для получения информации из городских API Санкт-Петербурга."
 
-            response = await self.llm_service.fetch_completion(
+            raw_response = await self.llm_service.fetch_completion_with_tools(
                 prompt,
                 {"tools": CITY_API_TOOLS, "tool_choice": "auto"}
             )
 
             log.info(f"Получен ответ от LLM с function calling")
 
-            return {**state, "api_data": {"response": response}}
+            if not raw_response.choices[0].message.tool_calls:
+                log.warning("LLM не вернул tool_calls")
+                return {"api_data": {"error": "No tool calls returned"}}
+
+            tool_calls = raw_response.choices[0].message.tool_calls
+            results = []
+
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
+
+                log.info(f"Вызов функции {function_name} с аргументами {function_args}")
+
+                if function_name in FUNCTION_MAP:
+                    function_to_call = FUNCTION_MAP[function_name]
+                    try:
+                        function_result = function_to_call(**function_args)
+                        results.append({
+                            "function": function_name,
+                            "arguments": function_args,
+                            "result": function_result
+                        })
+                        log.info(f"Результат {function_name}: успешно")
+                        log.info(f"Данные: {function_result}")
+                    except Exception as func_error:
+                        log.error(f"Ошибка выполнения функции {function_name}: {str(func_error)}")
+                        results.append({
+                            "function": function_name,
+                            "arguments": function_args,
+                            "error": str(func_error)
+                        })
+                else:
+                    log.error(f"Функция {function_name} не найдена в FUNCTION_MAP")
+                    results.append({
+                        "function": function_name,
+                        "error": "Function not found"
+                    })
+
+            return {"api_data": {"tool_calls": results}}
         except Exception as e:
             log.error(f"Ошибка API поиска: {str(e)}")
-            return {**state, "api_data": None}
+            return {"api_data": None}
 
-    async def web_search(self, state: RetrievalState) -> RetrievalState:
+    async def get_web_data(self, state: RetrievalState) -> RetrievalState:
         message = state["message"]
         requires_web_search = state.get("requires_web_search", False)
 
         if not requires_web_search:
             log.info("Web search не требуется")
-            return {**state, "web_search_results": None}
+            return {"web_search_results": None}
 
         log.info(f"Выполнение web search через Tavily")
 
@@ -229,22 +288,50 @@ class RetrievalAgent:
 
             log.info(f"Найдено {len(results)} результатов через Tavily")
 
-            return {**state, "web_search_results": results}
+            return {"web_search_results": results}
         except Exception as e:
             log.error(f"Ошибка web search через Tavily: {str(e)}")
-            return {**state, "web_search_results": None}
+            return {"web_search_results": None}
+
+    async def retrieve_all_parallel(self, state: RetrievalState) -> RetrievalState:
+        """
+        Выполняет все три задачи параллельно: RAG, API, Web Search
+        """
+        log.info("Запуск параллельного поиска: RAG + API + Web")
+
+        # Запускаем все три задачи параллельно
+        rag_task = self.get_rag_data(state)
+        api_task = self.get_api_data(state)
+        web_task = self.get_web_data(state)
+
+        # Ждем завершения всех задач
+        results = await asyncio.gather(rag_task, api_task, web_task, return_exceptions=True)
+
+        # Объединяем результаты - теперь каждая функция возвращает только свои поля
+        final_state = {**state}
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                log.error(f"Ошибка при параллельном выполнении задачи {i}: {str(result)}")
+                continue
+            if isinstance(result, dict):
+                # Теперь безопасно объединяем, так как каждая функция возвращает только свое поле
+                final_state.update(result)
+
+        log.info("Параллельный поиск завершен")
+        log.info(f"Финальный state: rag_context={final_state.get('rag_context') is not None}, "
+                 f"api_data={final_state.get('api_data') is not None}, "
+                 f"web_search_results={final_state.get('web_search_results') is not None}")
+        return final_state
 
     def build_graph(self):
         workflow = StateGraph(RetrievalState)
 
-        workflow.add_node("rag_search", self.rag_search)
-        workflow.add_node("api_search", self.api_search)
-        workflow.add_node("web_search", self.web_search)
+        # Добавляем одну ноду, которая выполняет все три задачи параллельно
+        workflow.add_node("retrieve_all_parallel", self.retrieve_all_parallel)
 
-        workflow.set_entry_point("rag_search")
-        workflow.add_edge("rag_search", "api_search")
-        workflow.add_edge("api_search", "web_search")
-        workflow.add_edge("web_search", END)
+        # Устанавливаем её как точку входа и выхода
+        workflow.set_entry_point("retrieve_all_parallel")
+        workflow.add_edge("retrieve_all_parallel", END)
 
         return workflow.compile()
 
@@ -254,6 +341,7 @@ async def main():
 
     test_state = {
         "message": "Где находится ближайший МФЦ к Невскому проспекту 1?",
+        "requires_rag": False,
         "requires_api": True,
         "requires_web_search": False,
         "history": [],

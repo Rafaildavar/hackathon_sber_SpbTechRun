@@ -43,9 +43,7 @@ class UrbanAdvisorSystem:
         workflow.add_node("parse_documents", self.parser_agent.process_documents)
         workflow.add_node("route", self.router_agent.classify_route)
         workflow.add_node("clarify", self.clarification_agent.check_clarification)
-        workflow.add_node("retrieve", self.retrieval_agent.rag_search)
-        workflow.add_node("retrieve_api", self.retrieval_agent.api_search)
-        workflow.add_node("retrieve_web", self.retrieval_agent.web_search)
+        workflow.add_node("retrieve_all", self.retrieval_agent.retrieve_all_parallel)
         workflow.add_node("prepare_system_prompt", self.context_agent.prepare_system_prompt)
         workflow.add_node("prepare_context", self.context_agent.prepare_context)
         workflow.add_node("save_to_history", self.context_agent.save_to_history)
@@ -72,13 +70,11 @@ class UrbanAdvisorSystem:
             self.should_clarify,
             {
                 "end": END,
-                "continue": "retrieve"
+                "continue": "retrieve_all"
             }
         )
 
-        workflow.add_edge("retrieve", "retrieve_api")
-        workflow.add_edge("retrieve_api", "retrieve_web")
-        workflow.add_edge("retrieve_web", "prepare_system_prompt")
+        workflow.add_edge("retrieve_all", "prepare_system_prompt")
         workflow.add_edge("prepare_system_prompt", "prepare_context")
         workflow.add_edge("prepare_context", "save_to_history")
         workflow.add_edge("save_to_history", "update_tokens")
@@ -94,13 +90,26 @@ class UrbanAdvisorSystem:
             output_dir = project_root / "data"
             output_dir.mkdir(exist_ok=True)
 
-            png_path = output_dir / f"{filename}.png"
+            # Сохраняем Mermaid диаграмму в текстовый файл
+            mermaid_path = output_dir / f"{filename}.mmd"
+            mermaid_code = graph.get_graph().draw_mermaid()
 
-            with open(filename, "wb") as f:
-                f.write(graph.get_graph().draw_mermaid_png())
+            with open(mermaid_path, "w", encoding="utf-8") as f:
+                f.write(mermaid_code)
 
-            log.info(f"Граф сохранен в: {png_path}")
-            return str(png_path)
+            log.info(f"Mermaid диаграмма сохранена в: {mermaid_path}")
+            log.info(f"Визуализируй граф на https://mermaid.live или используй Mermaid плагин")
+
+            # Попытка сохранить PNG (может не работать без интернета)
+            try:
+                png_path = output_dir / f"{filename}.png"
+                with open(png_path, "wb") as f:
+                    f.write(graph.get_graph().draw_mermaid_png())
+                log.info(f"PNG граф сохранен в: {png_path}")
+            except Exception as png_error:
+                log.warning(f"Не удалось сохранить PNG (нужен интернет): {png_error}")
+
+            return str(mermaid_path)
         except Exception as e:
             log.error(f"Ошибка при сохранении графа: {str(e)}")
             return None
@@ -114,6 +123,7 @@ def create_initial_state(message: str, history: list) -> UrbanAdvisorState:
         "user_documents": None,
         "has_user_documents": False,
         "uploaded_files": None,
+        "requires_rag": False,
         "requires_api": False,
         "requires_web_search": False,
         "is_clear": False,

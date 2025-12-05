@@ -63,6 +63,40 @@ class LLMService:
 
         return str(res.choices[0].message.content)
 
+    async def fetch_completion_with_tools(self, prompt: str, args=None):
+        """
+        Специальный метод для function calling, возвращает сырой ответ от API
+        вместо обработанного текста, чтобы сохранить tool_calls
+        """
+        self.request_counter += 1
+        request_id = self.request_counter
+        log.info(f"Запрос к llm с tools ({request_id}): {prompt}")
+
+        counter = 0
+        while True:
+            try:
+                res = await self.openai.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=CONFIG.llm.model,
+                    temperature=0,
+                    top_p=0.5,
+                    stream=False,
+                    **(args or {})
+                )
+
+                if res.usage:
+                    self.total_input_token += int(res.usage.prompt_tokens)
+                    self.total_output_token += int(res.usage.completion_tokens)
+
+                log.info(f"Ответ от llm ({request_id}): tool_calls={bool(res.choices[0].message.tool_calls)}")
+                return res
+            except Exception as e:
+                counter += 1
+                if counter < 3:
+                    log.warning(f"Ошибка при запросе к llm: {str(e)}")
+                else:
+                    raise e
+
     async def fetch_structured_completion(self, prompt: str, response_model: Type[T]) -> T:
         self.request_counter += 1
         request_id = self.request_counter

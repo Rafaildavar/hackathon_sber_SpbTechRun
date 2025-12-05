@@ -27,7 +27,7 @@ class ToxicityAgent:
         )
 
         toxicity_status = "токсичное" if response.is_toxic else "чистое"
-        log.info(f"Результат проверки токсичности: {toxicity_status} — {response.reason}")
+        log.info(f"Результат проверки токсичности: {toxicity_status}")
 
         return {
             "message": message,

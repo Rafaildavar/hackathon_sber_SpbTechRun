@@ -32,7 +32,6 @@ class ClarificationAgent:
         response = await self.llm_service.fetch_structured_completion(prompt, ClarificationCheck)
 
         log.info(f"Нужны уточнения: {response.needs_clarification}")
-        log.info(f"Reason: {response.reason}")
 
         if response.needs_clarification:
             log.info(f"Вопросы для уточнения: {response.questions}")

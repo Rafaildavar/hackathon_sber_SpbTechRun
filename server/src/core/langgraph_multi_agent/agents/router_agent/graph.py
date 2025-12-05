@@ -26,11 +26,12 @@ class RouterAgent:
 
         response = await self.llm_service.fetch_structured_completion(prompt, RouteClassification)
 
-        log.info(f"Маршрутизация: API={response.requires_api}, Web={response.requires_web_search}, Clear={response.is_clear}")
+        log.info(f"Маршрутизация: RAG={response.requires_rag}, API={response.requires_api}, Web={response.requires_web_search}, Clear={response.is_clear}")
         log.info(f"Reasoning: {response.reasoning}")
 
         return {
             **state,
+            "requires_rag": response.requires_rag,
             "requires_api": response.requires_api,
             "requires_web_search": response.requires_web_search,
             "is_clear": response.is_clear
@@ -61,6 +62,7 @@ async def main():
             "message": msg,
             "classification": "",
             "history": [],
+            "requires_rag": False,
             "requires_api": False,
             "requires_web_search": False,
             "is_clear": False
@@ -68,7 +70,7 @@ async def main():
 
         result = await graph.ainvoke(test_state)
         print(f"Сообщение: {msg}")
-        print(f"API: {result['requires_api']}, Web: {result['requires_web_search']}, Clear: {result['is_clear']}\n")
+        print(f"RAG: {result['requires_rag']}, API: {result['requires_api']}, Web: {result['requires_web_search']}, Clear: {result['is_clear']}\n")
 
 if __name__ == "__main__":
     asyncio.run(main())

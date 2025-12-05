@@ -47,7 +47,7 @@ async def main():
         "user_documents": None,
         "has_user_documents": True,
         "uploaded_files": [
-            {"path": "/path/to/doc.pdf", "type": "pdf", "name": "doc.pdf"}
+            {"path": "/core/data/sample.pdf", "type": "pdf", "name": "sample.pdf"}
         ]
     }
 

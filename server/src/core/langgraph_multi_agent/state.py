@@ -8,6 +8,7 @@ class UrbanAdvisorState(TypedDict):
     user_documents: Optional[List[dict]]
     has_user_documents: bool
     uploaded_files: Optional[List[dict]]
+    requires_rag: bool
     requires_api: bool
     requires_web_search: bool
     is_clear: bool

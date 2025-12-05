@@ -36,13 +36,33 @@ class ContextAgent:
 
         log.info(f"Подготовка контекста для генерации ответа")
 
-        api_data_str = json.dumps(api_data, ensure_ascii=False) if api_data else "Нет данных"
-        web_search_str = json.dumps(web_search_results, ensure_ascii=False) if web_search_results else "Нет данных"
+        # Форматируем API данные с результатами вызовов функций
+        if api_data and "tool_calls" in api_data:
+            api_parts = []
+            for call in api_data["tool_calls"]:
+                func_name = call.get("function", "unknown")
+                args = call.get("arguments", {})
+                result = call.get("result")
+                error = call.get("error")
+
+                if error:
+                    api_parts.append(f"❌ {func_name}({args}): Ошибка - {error}")
+                elif result:
+                    api_parts.append(f"✓ {func_name}({args}):\n{json.dumps(result, ensure_ascii=False, indent=2)}")
+                else:
+                    api_parts.append(f"⚠ {func_name}({args}): Нет результата")
+
+            api_data_str = "\n\n".join(api_parts) if api_parts else "Нет данных"
+        else:
+            api_data_str = json.dumps(api_data, ensure_ascii=False, indent=2) if api_data else "Нет данных"
+
+        web_search_str = json.dumps(web_search_results, ensure_ascii=False, indent=2) if web_search_results else "Нет данных"
         rag_str = rag_context if rag_context else "Нет данных"
         user_docs_str = "Да" if has_user_documents and user_documents else "Нет"
 
         prompt = render_prompt("context_prepare_prompt",
                              message=message,
+                             rag_context=rag_str,
                              api_data=api_data_str,
                              web_search_results=web_search_str,
                              has_user_documents=user_docs_str,

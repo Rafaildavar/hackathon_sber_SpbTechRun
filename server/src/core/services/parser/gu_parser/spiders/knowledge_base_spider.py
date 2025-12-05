@@ -165,6 +165,3 @@ class KnowledgeBaseSpider(scrapy.Spider):
         }
 
         yield item
-
-    def closed(self, reason):
-        pass
