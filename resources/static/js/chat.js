@@ -12,71 +12,232 @@ const fileInput = document.getElementById('fileInput');
 const fileBtn = document.getElementById('fileBtn');
 const voiceBtn = document.getElementById('voiceBtn');
 const deleteBtn = document.getElementById('deleteBtn');
-// Текущая выбранная кнопка в панели истории (если пользователь открыл конкретную историю)
+
+// Текущий активный чат
+let currentChatId = null;
+// Текущая выбранная кнопка в панели истории
 let currentHistoryBtn = null;
 
-// Функция добавляет сообщение в DOM
-// Параметры:
-// - text: текст сообщения
-// - who: кто отправитель ('assistant' или 'user'), по умолчанию 'assistant'
-// - scroll: прокручивать ли контейнер к новому сообщению (true/false)
-function addMessage(text, who='assistant', scroll=true){
+// API функции
+async function apiRequest(url, options = {}) {
+    const defaultOptions = {
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    };
+    const response = await fetch(url, { ...defaultOptions, ...options });
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Ошибка запроса' }));
+        throw new Error(error.detail || 'Ошибка запроса');
+    }
+    return response.json();
+}
+
+// Загрузка списка чатов
+async function loadChats() {
+    try {
+        const chats = await apiRequest('/api/chats');
+        historyEl.innerHTML = '';
+        chats.forEach(chat => {
+            addChatToHistory(chat);
+        });
+    } catch (error) {
+        console.error('Ошибка загрузки чатов:', error);
+    }
+}
+
+// Добавление чата в историю
+function addChatToHistory(chat) {
+    const btn = document.createElement('div');
+    btn.className = 'history-item';
+    btn.dataset.chatId = chat.id;
+    btn.dataset.title = chat.title;
+    
+    const icon = document.createElement('i');
+    icon.className = 'far fa-comment-alt';
+    
+    const text = document.createElement('span');
+    text.textContent = chat.title.length > 30 ? chat.title.slice(0, 30) + '…' : chat.title;
+    
+    btn.appendChild(icon);
+    btn.appendChild(text);
+    
+    btn.addEventListener('click', async () => {
+        await loadChat(chat.id);
+        // Подсветка активного чата
+        document.querySelectorAll('#history .history-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Меняем иконку на активную
+        document.querySelectorAll('#history .history-item i').forEach(i => i.className = 'far fa-comment-alt');
+        icon.className = 'fas fa-comment-alt';
+    });
+    
+    historyEl.appendChild(btn);
+}
+
+// Загрузка чата и его сообщений
+async function loadChat(chatId) {
+    try {
+        currentChatId = chatId;
+        const chat = await apiRequest(`/api/chats/${chatId}`);
+        const messages = await apiRequest(`/api/chats/${chatId}/messages`);
+        
+        convTitle.textContent = chat.title;
+        messagesEl.innerHTML = '';
+        
+        // Восстановление сообщений
+        messages.forEach(msg => {
+            renderMessage(msg);
+        });
+        
+        if (messagesEl.lastElementChild) {
+            messagesEl.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки чата:', error);
+        alert('Ошибка загрузки чата');
+    }
+}
+
+// Рендеринг сообщения
+function renderMessage(msg) {
     const el = document.createElement('div');
-    // класс 'msg' + конкретный класс для стилей пользователя/ассистента
-    el.className = 'msg ' + (who==='user' ? 'user' : 'assistant');
-    el.textContent = text;
+    el.className = 'msg ' + msg.role;
+    
+    if (msg.type === 'image') {
+        const img = document.createElement('img');
+        img.src = msg.content;
+        img.style.maxWidth = '240px';
+        img.style.borderRadius = '8px';
+        el.appendChild(img);
+    } else if (msg.type === 'audio') {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = msg.content;
+        audio.style.maxWidth = '320px';
+        el.appendChild(audio);
+    } else if (msg.type === 'file') {
+        const link = document.createElement('a');
+        link.href = msg.content;
+        link.textContent = msg.metadata?.name || msg.content.split('/').pop();
+        link.download = msg.metadata?.name || '';
+        el.appendChild(link);
+    } else {
+        el.textContent = msg.content;
+    }
+    
     messagesEl.appendChild(el);
-    // плавно прокручиваем к последнему сообщению, если нужно
-    if(scroll) el.scrollIntoView({behavior:'smooth', block:'end'});
     return el;
 }
 
-// Отправка текстового сообщения: добавляем сообщение пользователя и имитируем ответ ассистента
-function sendMessage(){
+// Сохранение сообщения в БД
+async function saveMessage(role, content, messageType = 'text', metadata = null) {
+    if (!currentChatId) {
+        // Создаем новый чат, если его нет
+        try {
+            const chat = await apiRequest('/api/chats', {
+                method: 'POST',
+                body: JSON.stringify({ title: 'New Chat' })
+            });
+            currentChatId = chat.id;
+            convTitle.textContent = chat.title;
+            addChatToHistory(chat);
+        } catch (error) {
+            console.error('Ошибка создания чата:', error);
+            return;
+        }
+    }
+    
+    try {
+        await apiRequest(`/api/chats/${currentChatId}/messages`, {
+            method: 'POST',
+            body: JSON.stringify({
+                role: role,
+                content: content,
+                type: messageType,
+                metadata: metadata
+            })
+        });
+    } catch (error) {
+        console.error('Ошибка сохранения сообщения:', error);
+    }
+}
+
+// Функция добавляет сообщение в DOM
+function addMessage(text, who = 'assistant', scroll = true) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + (who === 'user' ? 'user' : 'assistant');
+    el.textContent = text;
+    messagesEl.appendChild(el);
+    if (scroll) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    return el;
+}
+
+// Отправка текстового сообщения
+async function sendMessage() {
     const text = input.value.trim();
-    if(!text) return;
+    if (!text) return;
+    
+    // Добавляем сообщение пользователя в UI
     addMessage(text, 'user');
     input.value = '';
     sendBtn.disabled = true;
-
+    
+    // Сохраняем сообщение пользователя в БД
+    await saveMessage('user', text);
+    
+    // Показываем индикатор загрузки ответа
     const placeholder = addMessage('...', 'assistant');
-    setTimeout(()=>{
-        const reply = text; // эхо
+    
+    // Имитация ответа ассистента (здесь можно подключить реальный API)
+    setTimeout(async () => {
+        const reply = text; // эхо (замените на реальный ответ от AI)
         placeholder.textContent = reply;
         sendBtn.disabled = false;
+        
+        // Сохраняем ответ ассистента в БД
+        await saveMessage('assistant', reply);
     }, 700);
 }
 
 // Привязки для кнопки отправки и Enter в textarea
-if(sendBtn){
+if (sendBtn) {
     sendBtn.addEventListener('click', sendMessage);
 }
-if(input){
-    input.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' && !e.shiftKey){
+if (input) {
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
 }
 
-// Обработчик прикрепления файла (кнопка + скрытый input)
-if(fileBtn && fileInput){
-    fileBtn.addEventListener('click', ()=> fileInput.click());
-    fileInput.addEventListener('change', async (e)=>{
+// Обработчик прикрепления файла
+if (fileBtn && fileInput) {
+    fileBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
-        if(!file) return;
+        if (!file) return;
         const name = file.name;
         const placeholder = addMessage('Attached file: ' + name, 'user');
-        try{
+        try {
             const url = URL.createObjectURL(file);
-            if(file.type.startsWith('image/')){
+            let messageType = 'file';
+            let content = url;
+            let metadata = { name: name };
+            
+            if (file.type.startsWith('image/')) {
                 placeholder.textContent = '';
                 const img = document.createElement('img');
                 img.src = url;
                 img.style.maxWidth = '240px';
                 img.style.borderRadius = '8px';
                 placeholder.appendChild(img);
+                messageType = 'image';
             } else {
                 placeholder.textContent = '';
                 const link = document.createElement('a');
@@ -85,7 +246,10 @@ if(fileBtn && fileInput){
                 link.download = name;
                 placeholder.appendChild(link);
             }
-        }catch(err){
+            
+            // Сохраняем файл в БД
+            await saveMessage('user', content, messageType, metadata);
+        } catch (err) {
             console.error('File attach error', err);
             addMessage('File attach error', 'assistant');
         } finally {
@@ -96,79 +260,95 @@ if(fileBtn && fileInput){
 
 let recognition = null;
 let recognizing = false;
-if(voiceBtn){
-    voiceBtn.addEventListener('click', async ()=>{
-        // Попробуем Web Speech API (SpeechRecognition) первым — он сразу выдаёт текст
+let recorder = null;
+let mediaStream = null;
+let chunks = [];
+
+if (voiceBtn) {
+    voiceBtn.addEventListener('click', async () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-        if(SpeechRecognition){
-            // если уже распознаём — остановим
-            if(recognizing && recognition){
-                try{ recognition.stop(); }catch(e){}
+        if (SpeechRecognition) {
+            if (recognizing && recognition) {
+                try { recognition.stop(); } catch (e) {}
                 voiceBtn.classList.remove('recording');
                 voiceBtn.textContent = '🎤';
                 return;
             }
             recognition = new SpeechRecognition();
             recognition.lang = navigator.language || 'ru-RU';
-            // показываем промежуточные результаты в поле ввода, чтобы пользователь мог редактировать
             recognition.interimResults = true;
             recognition.maxAlternatives = 1;
-            recognition.onstart = ()=>{ recognizing = true; voiceBtn.classList.add('recording'); voiceBtn.textContent = '■'; };
-            recognition.onresult = (ev)=>{
-                try{
-                    // Собираем текущий скрипт (включая промежуточный)
-                    const transcript = Array.from(ev.results).map(r=>r[0].transcript).join('');
-                    if(transcript != null){
-                        // Помещаем распознанный текст в поле ввода для редактирования
+            recognition.onstart = () => {
+                recognizing = true;
+                voiceBtn.classList.add('recording');
+                voiceBtn.textContent = '■';
+            };
+            recognition.onresult = (ev) => {
+                try {
+                    const transcript = Array.from(ev.results).map(r => r[0].transcript).join('');
+                    if (transcript != null) {
                         input.value = transcript.trim();
                         input.focus();
-                        // поместим курсор в конец
-                        try{ input.selectionStart = input.selectionEnd = input.value.length; }catch(e){}
+                        try { input.selectionStart = input.selectionEnd = input.value.length; } catch (e) {}
                     }
-                }catch(err){ console.error('Recognition result error', err); addMessage('Recognition processing error.', 'assistant'); }
+                } catch (err) {
+                    console.error('Recognition result error', err);
+                    addMessage('Recognition processing error.', 'assistant');
+                }
             };
-            recognition.onerror = (ev)=>{ console.error('SpeechRecognition error', ev); addMessage('Speech recognition error: '+(ev.error||ev.message||'unknown'), 'assistant'); };
-            recognition.onend = ()=>{ recognizing = false; voiceBtn.classList.remove('recording'); voiceBtn.textContent = '🎤'; };
-            try{ recognition.start(); }catch(e){ console.error('Recognition start failed', e); addMessage('Speech recognition start failed.', 'assistant'); }
+            recognition.onerror = (ev) => {
+                console.error('SpeechRecognition error', ev);
+                addMessage('Speech recognition error: ' + (ev.error || ev.message || 'unknown'), 'assistant');
+            };
+            recognition.onend = () => {
+                recognizing = false;
+                voiceBtn.classList.remove('recording');
+                voiceBtn.textContent = '🎤';
+            };
+            try { recognition.start(); } catch (e) {
+                console.error('Recognition start failed', e);
+                addMessage('Speech recognition start failed.', 'assistant');
+            }
             return;
         }
 
-        // Fallback: MediaRecorder-based recording (audio blob)
-        // если уже записываем — остановим
-        if(recorder && recorder.state === 'recording'){
-            try{ recorder.stop(); }catch(e){ console.warn('Stop recorder failed', e); }
+        if (recorder && recorder.state === 'recording') {
+            try { recorder.stop(); } catch (e) { console.warn('Stop recorder failed', e); }
             voiceBtn.classList.remove('recording');
             voiceBtn.textContent = '🎤';
             return;
         }
 
-        // Проверки поддержки API
-        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             addMessage('Your browser does not support microphone access (navigator.mediaDevices).', 'assistant');
             return;
         }
-        if(typeof MediaRecorder === 'undefined'){
+        if (typeof MediaRecorder === 'undefined') {
             addMessage('MediaRecorder API is not available in this browser.', 'assistant');
             return;
         }
 
-        // запрос прав на микрофон и старт записи
-        try{
-            mediaStream = await navigator.mediaDevices.getUserMedia({audio:true});
-            // выберем подходящий mimeType если возможно
+        try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             let options = {};
-            if(MediaRecorder.isTypeSupported){
-                if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options.mimeType = 'audio/webm;codecs=opus';
-                else if(MediaRecorder.isTypeSupported('audio/webm')) options.mimeType = 'audio/webm';
-                else if(MediaRecorder.isTypeSupported('audio/mp4')) options.mimeType = 'audio/mp4';
+            if (MediaRecorder.isTypeSupported) {
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options.mimeType = 'audio/webm;codecs=opus';
+                else if (MediaRecorder.isTypeSupported('audio/webm')) options.mimeType = 'audio/webm';
+                else if (MediaRecorder.isTypeSupported('audio/mp4')) options.mimeType = 'audio/mp4';
             }
-            try{ recorder = Object.keys(options).length ? new MediaRecorder(mediaStream, options) : new MediaRecorder(mediaStream); }catch(e){ recorder = new MediaRecorder(mediaStream); }
+            try {
+                recorder = Object.keys(options).length ? new MediaRecorder(mediaStream, options) : new MediaRecorder(mediaStream);
+            } catch (e) {
+                recorder = new MediaRecorder(mediaStream);
+            }
             chunks = [];
-            recorder.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
-            recorder.onstop = ()=>{
-                try{
+            recorder.ondataavailable = e => {
+                if (e.data && e.data.size) chunks.push(e.data);
+            };
+            recorder.onstop = async () => {
+                try {
                     const mime = chunks[0] && chunks[0].type ? chunks[0].type : 'audio/webm';
-                    const blob = new Blob(chunks, {type: mime});
+                    const blob = new Blob(chunks, { type: mime });
                     const url = URL.createObjectURL(blob);
                     const placeholder = addMessage('Voice message', 'user');
                     placeholder.textContent = '';
@@ -177,178 +357,130 @@ if(voiceBtn){
                     audio.src = url;
                     audio.style.maxWidth = '320px';
                     placeholder.appendChild(audio);
-                    // остановить треки микрофона
-                    if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream = null; }
-                }catch(err){ console.error('Error processing recorded audio', err); addMessage('Recording failed to process.', 'assistant'); }
+                    
+                    // Сохраняем голосовое сообщение в БД
+                    await saveMessage('user', url, 'audio', { mime: mime });
+                    
+                    if (mediaStream) {
+                        mediaStream.getTracks().forEach(t => t.stop());
+                        mediaStream = null;
+                    }
+                } catch (err) {
+                    console.error('Error processing recorded audio', err);
+                    addMessage('Recording failed to process.', 'assistant');
+                }
             };
-            recorder.onerror = (ev)=>{ console.error('Recorder error', ev); addMessage('Recording error: ' + (ev?.error?.name||ev?.error||'unknown'), 'assistant'); };
+            recorder.onerror = (ev) => {
+                console.error('Recorder error', ev);
+                addMessage('Recording error: ' + (ev?.error?.name || ev?.error || 'unknown'), 'assistant');
+            };
             recorder.start();
             voiceBtn.classList.add('recording');
-            voiceBtn.textContent = '■'; // индикация записи (квадрат стоп)
-        }catch(err){
+            voiceBtn.textContent = '■';
+        } catch (err) {
             console.error('Voice record error', err);
-            if(err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')){
+            if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
                 addMessage('Permission to use microphone was denied.', 'assistant');
             } else {
                 addMessage('Voice input not supported or permission denied.', 'assistant');
             }
-            try{ if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream = null; } }catch(e){}
+            try {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop());
+                    mediaStream = null;
+                }
+            } catch (e) {}
         }
     });
 }
 
-// Сохраняет краткий фрагмент ответа в боковой истории
-// При клике по элементу истории восстанавливается простая «история» в окне чата
-// Сериализует текущее содержимое чата в массив объектов (тип, кто, содержимое)
-function serializeConversation(){
-    const out = [];
-    for(const node of messagesEl.children){
-        const who = node.classList.contains('user') ? 'user' : 'assistant';
-        const img = node.querySelector('img');
-        const audio = node.querySelector('audio');
-        const link = node.querySelector('a');
-        if(img){
-            out.push({who, type: 'image', content: img.src});
-            continue;
-        }
-        if(audio){
-            out.push({who, type: 'audio', content: audio.src});
-            continue;
-        }
-        if(link){
-            out.push({who, type: 'file', content: link.href, name: link.textContent||link.download||''});
-            continue;
-        }
-        // обычный текст
-        out.push({who, type: 'text', content: node.textContent});
-    }
-    return out;
-}
-
-// Рендерит массив сообщений (или JSON-строку) в окно чата
-function renderConversationFromSnapshot(snapshot){
-    let items = snapshot;
-    if(typeof snapshot === 'string'){
-        try{ items = JSON.parse(snapshot); }catch(e){ items = null; }
-    }
-    if(!items || !Array.isArray(items)){
-        messagesEl.innerHTML = '';
-        return;
-    }
-    messagesEl.innerHTML = '';
-    for(const it of items){
-        if(it.type === 'image'){
-            const el = addMessage('', it.who, false);
-            el.textContent = '';
-            const img = document.createElement('img');
-            img.src = it.content;
-            img.style.maxWidth = '240px';
-            img.style.borderRadius = '8px';
-            el.appendChild(img);
-        } else if(it.type === 'audio'){
-            const el = addMessage('', it.who, false);
-            el.textContent = '';
-            const audio = document.createElement('audio');
-            audio.controls = true;
-            audio.src = it.content;
-            audio.style.maxWidth = '320px';
-            el.appendChild(audio);
-        } else if(it.type === 'file'){
-            const el = addMessage('', it.who, false);
-            el.textContent = '';
-            const link = document.createElement('a');
-            link.href = it.content;
-            link.textContent = it.name || it.content.split('/').pop();
-            link.download = it.name || '';
-            el.appendChild(link);
-        } else {
-            addMessage(it.content, it.who, false);
-        }
-    }
-    if(messagesEl.lastElementChild) messagesEl.lastElementChild.scrollIntoView({behavior:'smooth', block:'end'});
-}
-
-// Сохраняет краткий фрагмент ответа в боковой истории
-// Теперь сохраняет структурированный снимок разговора (JSON) в data-атрибуте
-function saveToHistory(snippet, snapshot){
-    const btn = document.createElement('button');
-    // укорачиваем длинные строки для удобства в UI
-    btn.textContent = snippet.length>40? snippet.slice(0,40)+'…' : snippet;
-    btn.dataset.snippet = snippet;
-    // snapshot может быть передан явно; по умолчанию сериализуем текущее содержимое чата
-    const snapArray = Array.isArray(snapshot) ? snapshot : (typeof snapshot === 'string' ? (function(){ try{return JSON.parse(snapshot);}catch(e){return null;} })() : serializeConversation());
-    try{ btn.dataset.snapshot = JSON.stringify(snapArray || serializeConversation()); }catch(e){ btn.dataset.snapshot = ''; }
-
-    btn.addEventListener('click', ()=>{ // при клике восстанавливаем снимок истории
-        if(btn.dataset.snapshot){
-            renderConversationFromSnapshot(btn.dataset.snapshot);
-        } else {
-            messagesEl.innerHTML = '';
-            addMessage('History: ' + snippet, 'assistant');
-        }
-        convTitle.textContent = btn.textContent; // set title to the short snippet
-        // запомним, какая кнопка истории сейчас активна
-        currentHistoryBtn = btn;
-    });
-
-    historyEl.prepend(btn); // добавляем новый элемент в начало
-}
-
-// Создать новый чат: очистка сообщений и заголовка, показать приветствие
-newChatBtn.addEventListener('click', ()=>{
-    let exists = false;
-    // перед созданием нового чата — если есть текущие сообщения, сохраним их в истории
-    try{
-        const items = serializeConversation();
-        // не сохраняем, если разговор пуст или содержит только приветствие
-        if(items && items.length>0){
-            // короткий сниппет: возьмём последнее текстовое сообщение или тип
-            const snippet = (function(arr){
-                if(!arr || !arr.length) return 'Conversation';
-                const last = arr[arr.length-1];
-                if(last.type === 'text') return (last.content||'').slice(0,40);
-                if(last.type === 'image') return 'Image';
-                if(last.type === 'audio') return 'Voice message';
-                if(last.type === 'file') return 'File: ' + (last.name || '');
-                return 'Conversation';
-            })(items);
-            // Сохранение в историю
-            saveToHistory(snippet, items);
-        }
-    }catch(e){ console.warn('Save before new chat failed', e); }
-    // очистка и новый чат
-    messagesEl.innerHTML = '';
-    convTitle.textContent = 'New Chat';
-    addMessage('Hello! I am a local prototype. Ask me anything or write a task.', 'assistant');
-});
-
-// Удаление текущего диалога: подтверждение и очистка
-if(deleteBtn){
-    deleteBtn.addEventListener('click', ()=>{
-        const ok = confirm('Delete this conversation? This cannot be undone.');
-        if(!ok) return;
-        // очищаем область сообщений и сбрасываем заголовок
-        messagesEl.innerHTML = '';
-        convTitle.textContent = 'New Chat';
-        addMessage('Conversation deleted.', 'assistant');
-        // также удаляем кнопку истории, если она соответствует текущему чату
-        if(currentHistoryBtn && currentHistoryBtn.parentElement === historyEl){
-            currentHistoryBtn.remove();
-            currentHistoryBtn = null;
-            return;
-        }
-        // если currentHistoryBtn не установлен, попробуем найти кнопку по заголовку
-        const title = convTitle.textContent || '';
-        const buttons = historyEl.querySelectorAll('button');
-        for(const b of buttons){
-            const full = b.dataset.snippet || b.textContent || '';
-            if(title && (full === title || full.includes(title) || b.textContent === title)){
-                b.remove();
-                break;
+// Создать новый чат
+newChatBtn.addEventListener('click', async () => {
+    try {
+        // Если есть текущий чат с сообщениями, сохраняем его заголовок
+        if (currentChatId) {
+            const messages = messagesEl.querySelectorAll('.msg');
+            if (messages.length > 1) { // больше чем приветственное сообщение
+                const lastUserMessage = Array.from(messages).reverse().find(m => m.classList.contains('user'));
+                if (lastUserMessage) {
+                    const title = lastUserMessage.textContent.slice(0, 40);
+                    try {
+                        await apiRequest(`/api/chats/${currentChatId}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ title: title || 'New Chat' })
+                        });
+                    } catch (e) {
+                        console.error('Ошибка обновления заголовка чата:', e);
+                    }
+                }
             }
         }
+        
+        // Создаем новый чат
+        const chat = await apiRequest('/api/chats', {
+            method: 'POST',
+            body: JSON.stringify({ title: 'New Chat' })
+        });
+        
+        currentChatId = chat.id;
+        convTitle.textContent = chat.title;
+        messagesEl.innerHTML = '';
+        addMessage('Hello! I am a local prototype. Ask me anything or write a task.', 'assistant');
+        
+        // Добавляем в историю
+        addChatToHistory(chat);
+        
+        // Подсветка нового чата
+        document.querySelectorAll('#history .history-item').forEach(b => b.classList.remove('active'));
+        const newBtn = document.querySelector(`#history .history-item[data-chat-id="${chat.id}"]`);
+        if (newBtn) {
+            newBtn.classList.add('active');
+            newBtn.querySelector('i').className = 'fas fa-comment-alt';
+            currentHistoryBtn = newBtn;
+        }
+    } catch (error) {
+        console.error('Ошибка создания нового чата:', error);
+        alert('Ошибка создания нового чата');
+    }
+});
+
+// Удаление текущего диалога
+if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+        if (!currentChatId) {
+            alert('Нет активного чата для удаления');
+            return;
+        }
+        
+        const ok = confirm('Delete this conversation? This cannot be undone.');
+        if (!ok) return;
+        
+        try {
+            await apiRequest(`/api/chats/${currentChatId}`, {
+                method: 'DELETE'
+            });
+            
+            // Удаляем из истории
+            if (currentHistoryBtn) {
+                currentHistoryBtn.remove();
+                currentHistoryBtn = null;
+            }
+            
+            // Очищаем интерфейс
+            currentChatId = null;
+            messagesEl.innerHTML = '';
+            convTitle.textContent = 'New Chat';
+            addMessage('Conversation deleted.', 'assistant');
+        } catch (error) {
+            console.error('Ошибка удаления чата:', error);
+            alert('Ошибка удаления чата');
+        }
     });
 }
 
-// Поставить фокус в поле ввода при загрузке скрипта
-input.focus();
+// Загрузка чатов при загрузке страницы
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadChats();
+    // Фокус на поле ввода
+    if (input) input.focus();
+});

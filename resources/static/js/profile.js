@@ -81,12 +81,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Выход из аккаунта
     logoutBtn.addEventListener('click', function() {
         if (confirm('Вы уверены, что хотите выйти?')) {
-            // В реальном приложении здесь будет запрос на сервер для выхода
-            localStorage.removeItem('userData');
-            localStorage.removeItem('authToken');
-            
-            // Перенаправление на страницу входа
-            window.location.href = '/resources/templates/auth/auth.html';
+            fetch('/api/logout', {
+                method: 'POST',
+                credentials: 'include'
+            })
+            .then(response => {
+                localStorage.removeItem('userData');
+                localStorage.removeItem('authToken');
+                // Перенаправление на главную страницу
+                window.location.href = '/';
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                localStorage.removeItem('userData');
+                localStorage.removeItem('authToken');
+                // Перенаправление на главную страницу даже при ошибке
+                window.location.href = '/';
+            });
         }
     });
 

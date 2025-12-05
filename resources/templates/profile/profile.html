@@ -3,18 +3,20 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Profile</title>
-    <link rel="stylesheet" href="/resources/static/css/profile.css"/>
+    <title>Личный кабинет</title>
+    <link rel="stylesheet" href="/resources/static/css/profile.css?v=9"/>
 </head>
 <body>
     <div class="profile-container">
         <div class="profile-header">
             <h1>Личный кабинет</h1>
-            <button class="logout-btn" id="logoutBtn">Выйти</button>
+            <div class="header-actions">
+                <a href="/chat" class="nav-link-profile">Чат</a>
+                <button class="logout-btn" id="logoutBtn">Выйти</button>
+            </div>
         </div>
 
         <div class="profile-content">
-            <!-- Секция изменения данных профиля -->
             <div class="profile-section">
                 <h2>Личные данные</h2>
                 <form class="profile-form" id="profileForm">
@@ -38,7 +40,6 @@
                 </form>
             </div>
 
-            <!-- Секция изменения пароля -->
             <div class="profile-section">
                 <h2>Изменить пароль</h2>
                 <form class="profile-form" id="passwordForm">

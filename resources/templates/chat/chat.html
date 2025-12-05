@@ -3,47 +3,98 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Chat</title>
+    <title>Городской помощник | Чат</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/resources/static/css/chat.css"/>
 </head>
 <body>
+    <nav class="top-navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i class="fas fa-city"></i>
+                Городской помощник
+            </a>
+            <div class="nav-menu">
+                <a href="/profile" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Профиль</span>
+                </a>
+                <button id="logoutBtn" class="nav-item nav-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Выйти</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
     <div class="app" role="application" aria-label="Chat">
         <aside class="sidebar" aria-label="Sidebar of chat">
-            <div class="brand">
-                <img src="/resources/static/images/logo.jpg" alt="logo" class="brand-img"/>
-                <div>Chat</div>
+            <div class="sidebar-header">
+                <button class="new-chat-btn" id="newChat">
+                    <i class="fas fa-plus"></i>
+                    Новый чат
+                </button>
             </div>
-            <button class="new-chat" id="newChat">+ New Chat</button>
-            <div class="history" id="history" aria-live="polite"></div>
+            <div class="history" id="history" aria-live="polite">
+                <!-- История чатов будет здесь -->
+            </div>
         </aside>
 
         <main class="main" role="main">
             <div class="chat-header">
-                <div>
-                    <div class="title" id="convTitle">New Chat</div>
-                </div>
-                <!-- Действия в шапке чата: удалить диалог -->
+                <div class="title" id="convTitle">Новый чат</div>
                 <div class="header-actions">
-                    <button id="deleteBtn" class="delete-btn" title="Delete conversation" aria-label="Delete conversation">🗑️</button>
+                    <button id="deleteBtn" class="delete-btn" title="Удалить чат">
+                        <i class="far fa-trash-alt"></i>
+                    </button>
                 </div>
             </div>
 
             <div class="messages" id="messages" role="log" aria-live="polite">
-                <div class="msg assistant" id="welcome">Hello! I am a local prototype. Ask me anything or write a task.</div>
+                <!-- Сообщения -->
             </div>
 
             <div class="input-area">
-                <textarea id="input" placeholder="Write a message... (Enter — send, Shift+Enter — new line)"></textarea>
-                <!-- Кнопка прикрепления файла (скрытый input) -->
                 <input type="file" id="fileInput" style="display:none" />
-                <button id="fileBtn" class="file-btn" title="Attach file" aria-label="Attach file">📎</button>
-                <!-- Кнопка голосового ввода (запись) -->
-                <button id="voiceBtn" class="voice-btn" title="Voice input" aria-label="Voice input">🎤</button>
-                <button id="send" class="send-btn" title="Send" aria-label="Send">✈️</button>
+                <button id="fileBtn" class="action-btn" title="Прикрепить файл">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <div class="input-wrapper">
+                    <textarea id="input" placeholder="Введите сообщение..."></textarea>
+                </div>
+                <button id="voiceBtn" class="action-btn" title="Голосовой ввод">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="send" class="send-btn" title="Отправить">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </main>
     </div>
 
     <script src="/resources/static/js/chat.js"></script>
+    <script>
+        // Обработка выхода из аккаунта
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (confirm('Вы уверены, что хотите выйти?')) {
+                fetch('/api/logout', { 
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                    .then(() => {
+                        localStorage.removeItem('userData');
+                        localStorage.removeItem('authToken');
+                        window.location.href = '/';
+                    })
+                    .catch(error => {
+                        console.error('Ошибка:', error);
+                        localStorage.removeItem('userData');
+                        localStorage.removeItem('authToken');
+                        window.location.href = '/';
+                    });
+            }
+        });
+    </script>
 </body>
 </html>

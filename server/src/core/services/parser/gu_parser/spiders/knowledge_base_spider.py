@@ -1,0 +1,167 @@
+import scrapy
+import os
+from core.services.parser.gu_parser.items import KnowledgeBaseItem
+
+
+class KnowledgeBaseSpider(scrapy.Spider):
+    name = "knowledge_base"
+    allowed_domains = ["gu.spb.ru"]
+    start_urls = ["https://gu.spb.ru/knowledge-base/"]
+
+    custom_settings = {
+        'ITEM_PIPELINES': {
+            'core.services.parser.gu_parser.pipelines.GuParserPipeline': 300,
+        },
+        'FEEDS': {
+            os.path.join(os.path.dirname(__file__), '../../../../data/knowledge_base.json'): {
+                'format': 'json',
+                'encoding': 'utf-8',
+                'indent': 2,
+                'ensure_ascii': False,
+            },
+        },
+    }
+
+    def __init__(self, *args, **kwargs):
+        super(KnowledgeBaseSpider, self).__init__(*args, **kwargs)
+        self.pages_parsed = 0
+
+    def parse(self, response):
+        article_cards = response.css('div.element-card div.caseinfo')
+
+        for card in article_cards:
+            article_link = card.css('div.line-base a.ambient__link-ctrl::attr(href)').get()
+            title = card.css('div.line-base a.ambient__link-ctrl::text').get()
+            image = card.css('img.img-content::attr(src)').get()
+
+            if article_link:
+                full_url = response.urljoin(article_link)
+                yield scrapy.Request(
+                    full_url,
+                    callback=self.parse_article,
+                    meta={
+                        'card_title': title.strip() if title else None,
+                        'card_image': image
+                    }
+                )
+
+        pagination_links = response.css('a.pagination__list-button::attr(href)').getall()
+
+        if not pagination_links:
+            next_page = response.css('a.pagination__next::attr(href)').get()
+            if next_page:
+                pagination_links = [next_page]
+
+        if not pagination_links:
+            pagination_links = response.xpath('//div[contains(@class, "pagination")]//a/@href').getall()
+
+        for link in pagination_links:
+            if link:
+                yield response.follow(link, callback=self.parse)
+
+    def parse_article(self, response):
+        self.pages_parsed += 1
+
+        item = KnowledgeBaseItem()
+
+        item['url'] = response.url
+
+        card_title = response.meta.get('card_title')
+        page_title = response.css('h1::text').get()
+        if not page_title:
+            page_title = response.xpath('//h1/text()').get()
+
+        item['title'] = (page_title or card_title or '').strip()
+
+        item['image'] = response.meta.get('card_image')
+
+        content_blocks = []
+
+        main_content = response.css('main ::text, article ::text').getall()
+
+        for text in main_content:
+            cleaned = text.strip()
+            if cleaned and len(cleaned) > 1:
+                content_blocks.append(cleaned)
+
+        item['content'] = ' '.join(content_blocks)
+
+        paragraphs = response.css('main p').getall()
+        if not paragraphs:
+            paragraphs = response.css('article p').getall()
+
+        headers = []
+        for level in range(2, 7):
+            h_tags = response.css(f'main h{level}::text, article h{level}::text').getall()
+            headers.extend([f"H{level}: {h.strip()}" for h in h_tags if h.strip()])
+
+        lists = []
+        list_items = response.css('main ul li::text, main ol li::text, article ul li::text, article ol li::text').getall()
+        lists = [li.strip() for li in list_items if li.strip()]
+
+        links = []
+        article_links = response.css('main a, article a')
+        for link in article_links:
+            link_text = link.css('::text').get()
+            link_href = link.css('::attr(href)').get()
+            if link_text and link_href:
+                links.append({
+                    'text': link_text.strip(),
+                    'url': response.urljoin(link_href)
+                })
+
+        accordion_sections = []
+
+        droppanels = response.css('div.droppanel, div.accordion')
+
+        for panel in droppanels:
+            section_title = panel.css('h2::text, button.droppanel__head span.droppanel__head-title::text').get()
+
+            if not section_title:
+                section_title = panel.css('button ::text').get()
+
+            section_body = panel.css('div.droppanel__body, div.accordion__drop')
+
+            if section_body:
+                body_texts = section_body.css('::text').getall()
+                body_content = ' '.join([t.strip() for t in body_texts if t.strip()])
+
+                body_paragraphs = section_body.css('p').getall()
+
+                body_list_items = section_body.css('ul li, ol li').getall()
+
+                body_links = []
+                for link in section_body.css('a'):
+                    link_text = link.css('::text').get()
+                    link_href = link.css('::attr(href)').get()
+                    if link_text and link_href:
+                        body_links.append({
+                            'text': link_text.strip(),
+                            'url': response.urljoin(link_href)
+                        })
+
+                accordion_sections.append({
+                    'title': section_title.strip() if section_title else None,
+                    'content': body_content,
+                    'paragraphs': body_paragraphs,
+                    'list_items': body_list_items,
+                    'links': body_links
+                })
+
+        category = response.css('.breadcrumb ::text').getall()
+        if not category:
+            category = response.xpath('//nav[contains(@class, "breadcrumb")]//text()').getall()
+
+        category_clean = ' > '.join([c.strip() for c in category if c.strip()])
+        item['category'] = category_clean if category_clean else None
+
+        item['metadata'] = {
+            'headers': headers,
+            'lists': lists,
+            'links': links,
+            'accordion_sections': accordion_sections,
+            'paragraphs_count': len(paragraphs),
+            'response_status': response.status,
+        }
+
+        yield item
