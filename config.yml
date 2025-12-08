@@ -1,0 +1,50 @@
+llm:
+  url: https://caila.io/api/adapters/openai
+  model: just-ai/vllm-Qwen2.5-32B-Instruct-fp8-dynamic
+  token: 1000171461.206250.vheDvL7IeccHoYggQk7ort9yrkbQmzEJBrWYuYh9
+
+chunks:
+  chunk_size: 512
+  overlap: 100
+  model_name: intfloat/multilingual-e5-base
+  encoder_max_seq_length: 512
+
+qdrant:
+  host: localhost
+  port: 6333
+  collection_name: documents
+  model_name: intfloat/multilingual-e5-base
+  vector_size: 768
+  top_samples: 20
+  batch_size: 100
+
+reranker:
+  model_name: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+  top_samples: 5
+
+bm25:
+  top_samples: 20
+
+rag:
+  endpoint_url: http://localhost:6500/api/v1/get_answer
+
+tavily:
+  api_key: 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
+  max_results: 5
+  search_depth: advanced
+  include_raw_content: false
+
+logging:
+    app_name: rag-tg
+    graylog:
+      enabled: false
+      udp: false
+      host: 0.0.0.0
+      port: 12201
+    console:
+      enabled: true
+    root_level: INFO
+    levels:
+      httpx: WARN
+      openai: WARN
+      uvicorn.access: WARN

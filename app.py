@@ -12,19 +12,43 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from contextlib import asynccontextmanager
 import os
+import sys
 from datetime import datetime
 from database import Base, engine, get_db, User, Chat, Message
+
+# Добавляем путь к серверу для импорта агента
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'server', 'src'))
+from core.langgraph_multi_agent.main import UrbanAdvisorSystem, create_initial_state
+from core.services.ServiceManager import service_manager
+
+# Глобальная переменная для агента
+urban_advisor = None
+agent_graph = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Создание таблиц при запуске приложения."""
+    """Создание таблиц при запуске приложения и инициализация агента."""
+    global urban_advisor, agent_graph
+
     try:
         Base.metadata.create_all(bind=engine)
         print("База данных подключена и таблицы созданы/проверены")
     except Exception as e:
         print(f"Предупреждение: не удалось подключиться к базе данных: {e}")
         print("Приложение запустится, но функции БД могут не работать")
+
+    # Инициализация агента
+    try:
+        print("Инициализация Urban Advisor System...")
+        service_manager.initialize()
+        urban_advisor = UrbanAdvisorSystem()
+        agent_graph = urban_advisor.build_graph()
+        print("Urban Advisor System успешно инициализирован!")
+    except Exception as e:
+        print(f"Предупреждение: не удалось инициализировать агента: {e}")
+        print("Приложение запустится, но функции AI могут не работать")
+
     yield
     # Здесь можно добавить код для закрытия соединений при остановке
 
@@ -61,6 +85,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     """Хеширование пароля."""
+    # Обрезаем пароль до 72 байт для bcrypt
+    if len(password.encode('utf-8')) > 72:
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     return pwd_context.hash(password)
 
 
@@ -122,6 +149,10 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Пароль должен содержать минимум 6 символов'
         )
+
+    # Обрезаем пароль до 72 байт для bcrypt
+    if len(password.encode('utf-8')) > 72:
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
     
     # Проверка существования пользователя
     if db.query(User).filter(User.username == username).first():
@@ -312,7 +343,11 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Пароль должен содержать минимум 6 символов'
         )
-    
+
+    # Обрезаем пароль до 72 байт для bcrypt
+    if len(new_password.encode('utf-8')) > 72:
+        new_password = new_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+
     try:
         current_user.password_hash = get_password_hash(new_password)
         current_user.updated_at = datetime.utcnow()
@@ -553,6 +588,118 @@ async def create_message(
 async def chat_page(request: Request):
     """Страница чата."""
     return templates.TemplateResponse("chat/chat.html", {"request": request})
+
+
+@app.post('/api/chat')
+async def chat_with_agent(
+    request: Request,
+    current_user: User = Depends(login_required),
+    db: Session = Depends(get_db)
+):
+    """Обработка сообщения через Urban Advisor Agent."""
+    global agent_graph
+
+    if not agent_graph:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Агент не инициализирован. Попробуйте позже.'
+        )
+
+    data = await request.json()
+    message_text = data.get('message', '').strip()
+    chat_id = data.get('chat_id')
+
+    if not message_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Сообщение не может быть пустым'
+        )
+
+    # Проверяем существование чата
+    if chat_id:
+        chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+        if not chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Чат не найден'
+            )
+    else:
+        # Создаем новый чат
+        chat = Chat(
+            user_id=current_user.id,
+            title=message_text[:50] if len(message_text) > 50 else message_text
+        )
+        db.add(chat)
+        db.commit()
+        db.refresh(chat)
+
+    # Сохраняем сообщение пользователя
+    user_message = Message(
+        chat_id=chat.id,
+        role='user',
+        content=message_text,
+        message_type='text'
+    )
+    db.add(user_message)
+    db.commit()
+
+    # Получаем историю сообщений для агента
+    messages = db.query(Message).filter(Message.chat_id == chat.id).order_by(Message.created_at.asc()).all()
+    history = [{"role": msg.role, "content": msg.content} for msg in messages[:-1]]  # Исключаем последнее (текущее) сообщение
+
+    try:
+        # Создаем состояние для агента
+        state = create_initial_state(message_text, history)
+
+        # Вызываем агента
+        result = await agent_graph.ainvoke(state)
+
+        # Обрабатываем результат
+        if result.get('is_toxic'):
+            response_text = "Пожалуйста, общайтесь уважительно. Я не могу обработать токсичные сообщения."
+        elif result.get('in_clarification_mode'):
+            questions = result.get('clarification_questions', [])
+            response_text = "Для ответа на ваш вопрос нужны уточнения:\n\n" + "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
+        else:
+            response_text = result.get('response') or "Извините, не удалось сгенерировать ответ. Попробуйте переформулировать вопрос."
+
+        # Сохраняем ответ агента
+        assistant_message = Message(
+            chat_id=chat.id,
+            role='assistant',
+            content=response_text,
+            message_type='text'
+        )
+        db.add(assistant_message)
+        chat.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(assistant_message)
+
+        return {
+            'chat_id': chat.id,
+            'message': assistant_message.to_dict(),
+            'response': response_text
+        }
+
+    except Exception as e:
+        print(f"Ошибка при обработке сообщения агентом: {e}")
+        # Сохраняем сообщение об ошибке
+        error_message = Message(
+            chat_id=chat.id,
+            role='assistant',
+            content=f"Извините, произошла ошибка при обработке вашего запроса: {str(e)}",
+            message_type='text'
+        )
+        db.add(error_message)
+        db.commit()
+        db.refresh(error_message)
+
+        return {
+            'chat_id': chat.id,
+            'message': error_message.to_dict(),
+            'response': error_message.content,
+            'error': str(e)
+        }
 
 
 if __name__ == '__main__':

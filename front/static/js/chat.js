@@ -14,6 +14,8 @@ const voiceBtn = document.getElementById('voiceBtn');
 const deleteBtn = document.getElementById('deleteBtn');
 // Текущая выбранная кнопка в панели истории (если пользователь открыл конкретную историю)
 let currentHistoryBtn = null;
+// ID текущего чата для работы с агентом
+let currentChatId = null;
 
 // Функция добавляет сообщение в DOM
 // Параметры:
@@ -31,8 +33,8 @@ function addMessage(text, who='assistant', scroll=true){
     return el;
 }
 
-// Отправка текстового сообщения: добавляем сообщение пользователя и имитируем ответ ассистента
-function sendMessage(){
+// Отправка текстового сообщения: добавляем сообщение пользователя и вызываем AI агента
+async function sendMessage(){
     const text = input.value.trim();
     if(!text) return;
     addMessage(text, 'user');
@@ -40,11 +42,37 @@ function sendMessage(){
     sendBtn.disabled = true;
 
     const placeholder = addMessage('...', 'assistant');
-    setTimeout(()=>{
-        const reply = text; // эхо
-        placeholder.textContent = reply;
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                message: text,
+                chat_id: currentChatId // глобальная переменная с ID текущего чата
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        placeholder.textContent = data.response || 'Нет ответа';
+
+        // Сохраняем chat_id если это новый чат
+        if (data.chat_id && !currentChatId) {
+            currentChatId = data.chat_id;
+        }
+    } catch (error) {
+        console.error('Ошибка при отправке сообщения:', error);
+        placeholder.textContent = 'Ошибка при получении ответа. Попробуйте снова.';
+    } finally {
         sendBtn.disabled = false;
-    }, 700);
+    }
 }
 
 // Привязки для кнопки отправки и Enter в textarea

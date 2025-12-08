@@ -12,7 +12,7 @@ import os
 Base = declarative_base()
 
 # Создание движка базы данных
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5433/city_helper')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5435/city_helper')
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # Создание фабрики сессий
