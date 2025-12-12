@@ -32,7 +32,9 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "python-jose[cryptography]>=3.3.0",
     "aiofiles>=23.2.1",
-    "langchain_gigachat>=0.3.12"
+    "langchain_gigachat>=0.3.12",
+    "aiomax==2.12.3",
+    "certifi==2025.11.12"
 ]
 
 [tool.ruff]
