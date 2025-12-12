@@ -1,15 +1,23 @@
 import asyncio
+
+from langchain_gigachat.chat_models import GigaChat
+
 from langgraph.graph import StateGraph, END
 from core.langgraph_multi_agent.agents.conversational_agent.state import ConversationalState
 from core.services.LLMService import LLMService
 from utils.logger import get_logger
 from utils.prompt_loader import render_prompt
+from config.Config import CONFIG
 
 log = get_logger("ConversationalAgent")
 
 class ConversationalAgent:
     def __init__(self):
-        self.llm_service = LLMService()
+        self.llm_service = GigaChat(
+            model=CONFIG.giga.model,
+            credentials=CONFIG.giga.key,
+            verify_ssl_certs=False,
+        )
 
     async def generate_response(self, state: ConversationalState) -> ConversationalState:
         message = state["message"]
@@ -21,7 +29,7 @@ class ConversationalAgent:
                              context=context,
                              message=message)
 
-        response = await self.llm_service.fetch_completion(prompt)
+        response = self.llm_service.invoke(prompt)
 
         log.info(f"Ответ сгенерирован")
 
@@ -65,7 +73,7 @@ async def main():
 
     test_state = {
         "message": "Где находится ближайший МФЦ?",
-        "context": "По данным из API, ближайший МФЦ находится по адресу...",
+        "context": "По данным из API, ближайший МФЦ находится по адресу Дыбенко 7 к1 ст 1",
         "history": [
             {"role": "user", "content": "Где находится ближайший МФЦ?"}
         ],

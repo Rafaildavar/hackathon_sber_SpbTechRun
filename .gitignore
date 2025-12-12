@@ -221,3 +221,6 @@ Thumbs.db
 
 # Qdrant
 qdrant_data
+
+
+*server/src/sample.py

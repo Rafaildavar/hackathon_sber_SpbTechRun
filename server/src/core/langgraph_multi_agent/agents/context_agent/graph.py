@@ -36,7 +36,6 @@ class ContextAgent:
 
         log.info(f"Подготовка контекста для генерации ответа")
 
-        # Форматируем API данные с результатами вызовов функций
         if api_data and "tool_calls" in api_data:
             api_parts = []
             for call in api_data["tool_calls"]:
