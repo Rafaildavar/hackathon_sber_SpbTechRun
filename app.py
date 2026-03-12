@@ -74,7 +74,7 @@ templates = Jinja2Templates(directory="resources/templates")
 
 # Настройка для работы с паролями
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'change-this-secret-key-in-production')
 SESSION_COOKIE_NAME = 'session_id'
 
 
@@ -702,6 +702,58 @@ async def chat_with_agent(
         }
 
 
+@app.post('/api/bot/chat')
+async def bot_chat(request: Request):
+    """Обработка сообщения от Telegram-бота (авторизация по X-Bot-Secret)."""
+    global agent_graph
+
+    bot_secret = request.headers.get('X-Bot-Secret', '')
+    expected_secret = os.environ.get('INTERNAL_BOT_SECRET', '')
+    if not expected_secret or bot_secret != expected_secret:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Forbidden')
+
+    if not agent_graph:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Агент не инициализирован. Попробуйте позже.'
+        )
+
+    data = await request.json()
+    message_text = data.get('message', '').strip()
+    history = data.get('history', [])
+
+    if not message_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Сообщение не может быть пустым'
+        )
+
+    try:
+        state = create_initial_state(message_text, history)
+        result = await agent_graph.ainvoke(state)
+
+        if result.get('is_toxic'):
+            response_text = 'Пожалуйста, общайтесь уважительно. Я не могу обработать токсичные сообщения.'
+        elif result.get('in_clarification_mode'):
+            questions = result.get('clarification_questions', [])
+            response_text = 'Для ответа на ваш вопрос нужны уточнения:\n\n' + '\n'.join(
+                f'{i}. {q}' for i, q in enumerate(questions, 1)
+            )
+        else:
+            response_text = result.get('response') or 'Извините, не удалось сгенерировать ответ.'
+
+        return {
+            'response': response_text,
+            'history': result.get('history', [])
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Ошибка при обработке запроса: {str(e)}'
+        )
+
+
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=5001, reload=True)
+    uvicorn.run(app, host='0.0.0.0', port=5001)

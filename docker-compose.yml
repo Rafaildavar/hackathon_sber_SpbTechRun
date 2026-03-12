@@ -2,15 +2,17 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: city_helper_postgres
+    env_file: .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: city_helper
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant
@@ -24,13 +26,14 @@ services:
       - QDRANT__SERVICE__GRPC_PORT=6334
     restart: unless-stopped
 
-  app:
+  rag-app:
     build:
       context: ./server
       dockerfile: Dockerfile
     container_name: rag-app
     ports:
       - "6500:6500"
+    env_file: .env
     volumes:
       - ./server/src/core/data:/app/src/core/data
       - ./server/src/core/data/chunks:/data/chunks
@@ -42,5 +45,40 @@ services:
     depends_on:
       - qdrant
     restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: city-web
+    ports:
+      - "5001:5001"
+    env_file: .env
+    volumes:
+      - ./server/src/core/data:/app/server/src/core/data
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - RAG_ENDPOINT_URL=http://rag-app:6500/api/v1/get_answer
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - postgres
+      - qdrant
+      - rag-app
+    restart: unless-stopped
+
+  telegram-bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: city-telegram-bot
+    env_file: .env
+    environment:
+      - APP_URL=http://web:5001
+    depends_on:
+      - web
+    restart: unless-stopped
+
 volumes:
   postgres_data:

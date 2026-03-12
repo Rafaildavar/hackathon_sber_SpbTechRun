@@ -1,37 +1,30 @@
-import asyncio
-
-from langchain_gigachat.chat_models import GigaChat
-
 from langgraph.graph import StateGraph, END
+
 from core.langgraph_multi_agent.agents.conversational_agent.state import ConversationalState
 from core.services.LLMService import LLMService
 from utils.logger import get_logger
 from utils.prompt_loader import render_prompt
-from config.Config import CONFIG
 
 log = get_logger("ConversationalAgent")
 
+
 class ConversationalAgent:
     def __init__(self):
-        self.llm_service = GigaChat(
-            model=CONFIG.giga.model,
-            credentials=CONFIG.giga.key,
-            verify_ssl_certs=False,
-        )
+        self.llm_service = LLMService()
 
     async def generate_response(self, state: ConversationalState) -> ConversationalState:
         message = state["message"]
         context = state.get("context", "")
 
-        log.info(f"Генерация финального ответа")
+        log.info("Генерация финального ответа")
 
         prompt = render_prompt("conversational_prompt",
-                             context=context,
-                             message=message)
+                               context=context,
+                               message=message)
 
-        response = self.llm_service.invoke(prompt)
+        response = await self.llm_service.fetch_completion(prompt)
 
-        log.info(f"Ответ сгенерирован")
+        log.info("Ответ сгенерирован")
 
         return {**state, "response": response}
 
@@ -66,22 +59,3 @@ class ConversationalAgent:
         workflow.add_edge("save_response_to_history", END)
 
         return workflow.compile()
-
-async def main():
-    agent = ConversationalAgent()
-    graph = agent.build_graph()
-
-    test_state = {
-        "message": "Где находится ближайший МФЦ?",
-        "context": "По данным из API, ближайший МФЦ находится по адресу Дыбенко 7 к1 ст 1",
-        "history": [
-            {"role": "user", "content": "Где находится ближайший МФЦ?"}
-        ],
-        "response": None
-    }
-
-    result = await graph.ainvoke(test_state)
-    print(f"Ответ: {result['response']}")
-
-if __name__ == "__main__":
-    asyncio.run(main())

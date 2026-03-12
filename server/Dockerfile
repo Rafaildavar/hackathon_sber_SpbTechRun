@@ -7,17 +7,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir uv
-
-ENV UV_HTTP_TIMEOUT=300
-
+# Зависимости (извлекаем из pyproject.toml)
 COPY pyproject.toml /app/
-
-RUN uv pip install --system -r /app/pyproject.toml
+RUN python3 -c "import tomllib; f=open('/app/pyproject.toml','rb'); d=tomllib.load(f); f.close(); print('\n'.join(d['project']['dependencies']))" > /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY src/ /app/src/
 
-RUN ls -la /app/src/config.yml && echo "config.yml скопирован успешно" || echo "ОШИБКА: config.yml не найден!"
+RUN ls -la /app/src/config.yml && echo "config.yml OK" || echo "ОШИБКА: config.yml не найден!"
 
 RUN mkdir -p /data/chunks /data/bm25
 

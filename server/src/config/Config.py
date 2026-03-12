@@ -54,11 +54,6 @@ class LLMConfig:
     model: str
 
 @dataclass
-class GigaConfig:
-    model: str
-    key: str
-
-@dataclass
 class RagConfig:
     endpoint_url: str
 
@@ -72,7 +67,6 @@ class TavilyConfig:
 @dataclass
 class Config:
     llm: LLMConfig
-    giga: GigaConfig
     chunks: ChunksConfig
     qdrant: QdrantConfig
     reranker: RerankerConfig
