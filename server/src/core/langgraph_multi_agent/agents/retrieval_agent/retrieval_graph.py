@@ -23,6 +23,8 @@ FUNCTION_MAP = {
     "pensioner_service": tools.pensioner_service,
     "afisha_all": tools.afisha_all,
     "get_beautiful_places": tools.get_beautiful_places,
+    "search_spb_gov_services": tools.search_spb_gov_services,
+    "get_benefits_info": tools.get_mos_ru_services_info,
 }
 
 CITY_API_TOOLS = [
@@ -157,6 +159,34 @@ CITY_API_TOOLS = [
                     "categoria": {"type": "string", "description": "Категория"},
                     "district": {"type": "string", "description": "Район"}
                 }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_spb_gov_services",
+            "description": "Поиск информации о городских услугах, МФЦ, госуслугах на официальных сайтах Санкт-Петербурга (gu.spb.ru, spbmfc.ru и др.). Используй когда нужна свежая информация о госуслугах, режиме работы МФЦ, необходимых документах, записи на прием.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Поисковый запрос на русском языке, например: 'МФЦ Невский район режим работы', 'запись на прием загранпаспорт', 'список документов для субсидии ЖКХ'"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_benefits_info",
+            "description": "Поиск актуальной информации о льготах, пособиях и социальных выплатах для жителей Санкт-Петербурга. Используй для вопросов о льготах для пенсионеров, многодетных семей, инвалидов, малоимущих граждан.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {"type": "string", "description": "Тема льгот или пособий, например: 'многодетные семьи', 'пенсионеры', 'инвалиды', 'субсидия ЖКХ', 'материнский капитал'"}
+                },
+                "required": ["topic"]
             }
         }
     }

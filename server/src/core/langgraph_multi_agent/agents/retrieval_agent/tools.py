@@ -1,11 +1,88 @@
 import requests
 from typing import List, Dict, Any, Optional
 from utils.logger import get_logger
+from config.Config import CONFIG
 
 log = get_logger("RetrievalAgentTools")
 
 geo_api = "https://yazzh-geo.gate.petersburg.ru/api/v2"
 main_api = "https://yazzh.gate.petersburg.ru"
+
+SPB_GOV_DOMAINS = [
+    "gu.spb.ru",
+    "мфц.рф",
+    "spb.ru",
+    "gov.spb.ru",
+    "egov.spb.ru",
+    "petersburgedu.ru",
+    "spbmfc.ru",
+    "kugi.spb.ru",
+]
+
+
+def search_spb_gov_services(query: str) -> Optional[List[Dict]]:
+    """Поиск информации о городских услугах Санкт-Петербурга через Tavily."""
+    try:
+        resp = requests.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key": CONFIG.tavily.api_key,
+                "query": f"Санкт-Петербург {query}",
+                "search_depth": "basic",
+                "include_domains": SPB_GOV_DOMAINS,
+                "max_results": 5,
+            },
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            log.error(f"Tavily ошибка: {resp.status_code}")
+            return None
+
+        data = resp.json()
+        results = []
+        for r in data.get("results", []):
+            results.append({
+                "title": r.get("title"),
+                "url": r.get("url"),
+                "content": r.get("content", "")[:500],
+            })
+        log.info(f"Tavily вернул {len(results)} результатов для: {query}")
+        return results
+    except Exception as e:
+        log.error(f"Ошибка search_spb_gov_services: {str(e)}")
+        return None
+
+
+def get_mos_ru_services_info(topic: str) -> Optional[List[Dict]]:
+    """Поиск актуальной информации о льготах и пособиях для жителей СПб."""
+    try:
+        resp = requests.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key": CONFIG.tavily.api_key,
+                "query": f"льготы пособия {topic} Санкт-Петербург",
+                "search_depth": "advanced",
+                "max_results": 5,
+            },
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            log.error(f"Tavily ошибка: {resp.status_code}")
+            return None
+
+        data = resp.json()
+        results = []
+        for r in data.get("results", []):
+            results.append({
+                "title": r.get("title"),
+                "url": r.get("url"),
+                "content": r.get("content", "")[:500],
+            })
+        log.info(f"Tavily льготы вернул {len(results)} результатов для: {topic}")
+        return results
+    except Exception as e:
+        log.error(f"Ошибка get_mos_ru_services_info: {str(e)}")
+        return None
 
 def get_building_id_by_address(user_address: str):
     try:
